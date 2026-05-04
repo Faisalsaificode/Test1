@@ -201,3 +201,53 @@ This project is part of the **CertifyMe Full Stack Intern Assessment**. The repo
 - Delete permanently from the database
 - Remove from UI immediately **without page refresh**
 - Only the creator admin can delete their own opportunity
+
+---
+
+## ▶️ How to Run (Backend Implementation)
+
+### Setup
+```bash
+python -m venv venv
+venv\Scripts\activate          # (Windows)   or   source venv/bin/activate
+pip install -r requirements.txt
+python app.py
+```
+
+The server starts on **http://127.0.0.1:5000**. Open that URL — the original Admin UI loads and is fully wired to the Flask backend.
+
+### Project Layout
+```
+qatar_foundation_admin/
+├── app.py                # Flask entrypoint, blueprint registration, login manager
+├── config.py             # SECRET_KEY, SQLite URI, allowed categories, session lifetime
+├── models.py             # Admin, Opportunity, PasswordResetToken (SQLAlchemy)
+├── auth_routes.py        # /api/signup, /api/login, /api/logout, /api/forgot-password, /api/session
+├── opp_routes.py         # GET/POST/PUT/DELETE /api/opportunities[/:id]
+├── requirements.txt
+├── sky/                  # ORIGINAL upstream UI — unchanged (do not modify)
+├── static/               # Flask-served copy of CSS + admin.js wired to backend
+└── templates/            # Flask-served admin.html (uses url_for for static)
+```
+
+### API Endpoints
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| POST | `/api/signup` | – | Create admin (US-1.1) |
+| POST | `/api/login` | – | Sign in, sets session cookie; `remember=true` extends lifetime (US-1.2) |
+| POST | `/api/logout` | ✓ | End session |
+| GET  | `/api/session` | – | Returns current logged-in admin (used to restore session on reload) |
+| POST | `/api/forgot-password` | – | Always returns generic success; reset link printed to console (US-1.3) |
+| GET / POST | `/api/reset-password/<token>` | – | Validate / consume a reset token (1-hour expiry) |
+| GET  | `/api/opportunities` | ✓ | List opportunities owned by current admin (US-2.1) |
+| POST | `/api/opportunities` | ✓ | Create new opportunity for current admin (US-2.2) |
+| GET  | `/api/opportunities/<id>` | ✓ | View one (owner-checked) (US-2.4) |
+| PUT  | `/api/opportunities/<id>` | ✓ | Edit (owner-checked) (US-2.5) |
+| DELETE | `/api/opportunities/<id>` | ✓ | Delete (owner-checked) (US-2.6) |
+
+### Notes
+- Passwords are hashed with `werkzeug.security.generate_password_hash` (PBKDF2). Plain text is never stored.
+- Session is managed by Flask-Login; the cookie is HTTP-only.
+- Authorization on every opportunity endpoint filters by `admin_id == current_user.id`, so admins cannot access each other's data (returns 404 to avoid leaking existence).
+- The original UI in `sky/` is preserved verbatim. The Flask-served copies in `static/`/`templates/` are visually identical — only `admin.js` was modified to call backend APIs and render opportunity cards from the database.
+- DB defaults to SQLite at `qatar_admin.db`. Override via the `DATABASE_URL` env var to use PostgreSQL.
